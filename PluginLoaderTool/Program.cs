@@ -49,7 +49,7 @@ namespace avaness.PluginLoaderTool
             [Option("cache", Required = false, HelpText = "Folder of previously compiled plugins.")]
             public string CacheDir { get; set; }
 
-            [Option("steamdir", Required = false, HelpText = "Location of the steamapps folder containing Space Engineers Dedicated Server.")]
+            [Option("steamdir", Required = false, HelpText = "Location of the folder containing Space Engineers Dedicated Server.")]
             public string SteamDir { get; set; }
         }
 
@@ -64,10 +64,10 @@ namespace avaness.PluginLoaderTool
             {
                 Options o = parsedArgs.Value;
 
-                string steamapps = "steamapps";
                 if (o.SteamDir != null)
-                    steamapps = o.SteamDir;
-                SpaceEngineersExe = Path.GetFullPath(Path.Combine(steamapps, "common", "SpaceEngineersDedicatedServer", "DedicatedServer64", "SpaceEngineersDedicated.exe"));
+                    SpaceEngineersExe = Path.GetFullPath(Path.Combine(o.SteamDir, "DedicatedServer64", "SpaceEngineersDedicated.exe"));
+                else
+                    SpaceEngineersExe = Path.GetFullPath(Path.Combine("steamapps", "common", "SpaceEngineersDedicatedServer", "DedicatedServer64", "SpaceEngineersDedicated.exe"));
                 if (!File.Exists(SpaceEngineersExe))
                     throw new Exception("Space Engineers is not installed!");
 
