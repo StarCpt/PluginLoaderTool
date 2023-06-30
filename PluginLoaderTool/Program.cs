@@ -56,7 +56,7 @@ namespace avaness.PluginLoaderTool
         public static async Task Main(string[] args)
         {
 #if DEBUG
-            args = new[] { "-i", @"..\..\..\..\Plugins", "--cache", "compiled_plugins", "-o", "output.zip" };
+            args = new[] { "-i", @"D:\Documents\GitHub\PluginHub\Plugins", "--cache", "compiled_plugins", "--steamdir", @"D:\Torch\", "-o", "output.zip" };
 #endif
 
             ParserResult<Options> result = Parser.Default.ParseArguments<Options>(args);
