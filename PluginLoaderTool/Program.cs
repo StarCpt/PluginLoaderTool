@@ -16,6 +16,8 @@ namespace avaness.PluginLoaderTool
 {
     public class Program
     {
+        public static Options ParsedOptions { get; private set; }
+
         private static HttpClientHandler handler = new HttpClientHandler()
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
@@ -57,13 +59,13 @@ namespace avaness.PluginLoaderTool
         public static async Task Main(string[] args)
         {
 #if DEBUG
-            args = new[] { "-i", @"D:\Documents\GitHub\PluginHub\Plugins", "--cache", "compiled_plugins", "--steamdir", @"D:\Torch\", "-o", "output.zip" };
+            args = new[] { "--http", @"https://github.com/sepluginloader/PluginHub/archive/main.zip", "--cache", "compiled_plugins", "--steamdir", @"C:\Users\lurkingstar\Desktop\seds", "-o", "plugins.zip" };
 #endif
 
             ParserResult<Options> result = Parser.Default.ParseArguments<Options>(args);
             if (result is Parsed<Options> parsedArgs) // Equivalent to ParserResult<T>.WithParsed<T>()
             {
-                Options o = parsedArgs.Value;
+                Options o = ParsedOptions = parsedArgs.Value;
 
                 if (o.SteamDir != null)
                 {
@@ -78,7 +80,7 @@ namespace avaness.PluginLoaderTool
                 if (!File.Exists(SpaceEngineersExe))
                     throw new Exception("Space Engineers is not installed!");
                 if (!File.Exists(PluginLoaderDll))
-                    Console.WriteLine("WARNING: Plugin Loader is not installed!");
+                    Console.WriteLine("WARNING: Plugin Loader is not installed! Some plugins may depend on the PluginLoader assembly.");
 
                 PluginData[] plugins = await GetPluginsAsync(o);
                 if (plugins.Length == 0)
@@ -92,7 +94,7 @@ namespace avaness.PluginLoaderTool
                     foreach(PluginData plugin in plugins)
                     {
                         if (plugin is GitHubPlugin github)
-                            github.Init();
+                            github.InitPaths();
                     }
                 }
                 else if (o.Output != null)
@@ -151,7 +153,7 @@ namespace avaness.PluginLoaderTool
                         {
                             try
                             {
-                                github.Init();
+                                github.InitPaths();
                                 await CompilePlugin(newArchive, github, cacheDir);
                             }
                             catch (Exception e)

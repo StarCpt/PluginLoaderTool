@@ -14,6 +14,7 @@ namespace avaness.PluginLoaderTool.Compiler
     public class RoslynCompiler
     {
         private readonly List<Source> source = new List<Source>();
+        private readonly List<MetadataReference> customReferences = new List<MetadataReference>();
         private bool debugBuild;
 
         public RoslynCompiler(bool debugBuild = false)
@@ -38,7 +39,7 @@ namespace avaness.PluginLoaderTool.Compiler
             CSharpCompilation compilation = CSharpCompilation.Create(
                 assemblyName,
                 syntaxTrees: source.Select(x => x.Tree),
-                references: RoslynReferences.EnumerateAllReferences(),
+                references: RoslynReferences.EnumerateAllReferences().Concat(customReferences),
                 options: new CSharpCompilationOptions(
                     OutputKind.DynamicallyLinkedLibrary,
                     optimizationLevel: debugBuild ? OptimizationLevel.Debug : OptimizationLevel.Release,
@@ -88,6 +89,26 @@ namespace avaness.PluginLoaderTool.Compiler
                 }
             }
 
+        }
+
+        public void TryAddDependency(string dll)
+        {
+            if (Path.HasExtension(dll)
+                && Path.GetExtension(dll).Equals(".dll", StringComparison.OrdinalIgnoreCase)
+                && File.Exists(dll))
+            {
+                try
+                {
+                    MetadataReference reference = MetadataReference.CreateFromFile(dll);
+                    if (reference != null)
+                    {
+                        Console.WriteLine("Custom compiler reference: " + (reference.Display ?? dll));
+                        customReferences.Add(reference);
+                    }
+                }
+                catch
+                { }
+            }
         }
 
         private class Source

@@ -122,5 +122,10 @@ namespace avaness.PluginLoaderTool.Compiler
         {
             return !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location) && !referenceBlacklist.Contains(a.GetName().Name);
         }
+
+        public static bool Contains(string id)
+        {
+            return allReferences.ContainsKey(id);
+        }
     }
 }
