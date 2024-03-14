@@ -23,6 +23,7 @@ namespace avaness.PluginLoaderTool
         private static HttpClient webClient = new HttpClient(handler);
         private static XmlSerializer pluginDataSerializer = new XmlSerializer(typeof(PluginData));
         private static string SpaceEngineersExe = null;
+        private static string PluginLoaderDll = null;
 
         private const string RepoZipUrl = "https://github.com/{0}/archive/{1}.zip";
         private const string WhitelistFileName = "whitelist.bin";
@@ -65,11 +66,19 @@ namespace avaness.PluginLoaderTool
                 Options o = parsedArgs.Value;
 
                 if (o.SteamDir != null)
+                {
                     SpaceEngineersExe = Path.GetFullPath(Path.Combine(o.SteamDir, "DedicatedServer64", "SpaceEngineersDedicated.exe"));
+                    PluginLoaderDll = Path.GetFullPath(Path.Combine(o.SteamDir, "DedicatedServer64", "PluginLoader.dll"));
+                }
                 else
+                {
                     SpaceEngineersExe = Path.GetFullPath(Path.Combine("steamapps", "common", "SpaceEngineersDedicatedServer", "DedicatedServer64", "SpaceEngineersDedicated.exe"));
+                    PluginLoaderDll = Path.GetFullPath(Path.Combine("steamapps", "common", "SpaceEngineersDedicatedServer", "DedicatedServer64", "PluginLoader.dll"));
+                }
                 if (!File.Exists(SpaceEngineersExe))
                     throw new Exception("Space Engineers is not installed!");
+                if (!File.Exists(PluginLoaderDll))
+                    Console.WriteLine("WARNING: Plugin Loader is not installed!");
 
                 PluginData[] plugins = await GetPluginsAsync(o);
                 if (plugins.Length == 0)
@@ -100,6 +109,7 @@ namespace avaness.PluginLoaderTool
         private static void LoadPluginReferences()
         {
             Assembly.LoadFile(SpaceEngineersExe);
+            Assembly.LoadFile(PluginLoaderDll);
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
             RoslynReferences.GenerateAssemblyList();
             AppDomain.CurrentDomain.AssemblyResolve -= CurrentDomain_AssemblyResolve;
