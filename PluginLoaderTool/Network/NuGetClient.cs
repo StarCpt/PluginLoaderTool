@@ -36,7 +36,7 @@ namespace avaness.PluginLoaderTool.Network
             if(binAssemblies == null)
             {
                 binAssemblies = new HashSet<string>(
-                    Directory.EnumerateFiles(Program.ParsedOptions.SteamDir, "*.dll", SearchOption.TopDirectoryOnly)
+                    Directory.EnumerateFiles(Program.ExeDir, "*.dll", SearchOption.TopDirectoryOnly)
                     .Select(Path.GetFileNameWithoutExtension)
                     .Select(x => x.ToLowerInvariant()));
             }
@@ -45,7 +45,7 @@ namespace avaness.PluginLoaderTool.Network
             extractionContext = new PackageExtractionContext(PackageSaveMode.Defaultv3, XmlDocFileSaveMode.Skip, ClientPolicyContext.GetClientPolicy(nugetSettings, logger), logger);
             sourceRepository = Repository.Factory.GetCoreV3(NugetServiceIndex);
 
-            packageFolder = Path.GetFullPath(Path.Combine(Program.ParsedOptions.SteamDir, "NuGet", "packages"));
+            packageFolder = Path.GetFullPath(Path.Combine(Program.ExeDir, "NuGet", "packages"));
             Directory.CreateDirectory(packageFolder);
             pathResolver = new PackagePathResolver(packageFolder);
         }

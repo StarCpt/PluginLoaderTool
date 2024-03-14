@@ -17,6 +17,7 @@ namespace avaness.PluginLoaderTool
     public class Program
     {
         public static Options ParsedOptions { get; private set; }
+        public static string ExeDir { get; private set; }
 
         private static HttpClientHandler handler = new HttpClientHandler()
         {
@@ -69,13 +70,15 @@ namespace avaness.PluginLoaderTool
 
                 if (o.SteamDir != null)
                 {
-                    SpaceEngineersExe = Path.GetFullPath(Path.Combine(o.SteamDir, "DedicatedServer64", "SpaceEngineersDedicated.exe"));
-                    PluginLoaderDll = Path.GetFullPath(Path.Combine(o.SteamDir, "DedicatedServer64", "PluginLoader.dll"));
+                    ExeDir = Path.GetFullPath(Path.Combine(o.SteamDir, "DedicatedServer64"));
+                    SpaceEngineersExe = Path.GetFullPath(Path.Combine(ExeDir, "SpaceEngineersDedicated.exe"));
+                    PluginLoaderDll = Path.GetFullPath(Path.Combine(ExeDir, "PluginLoader.dll"));
                 }
                 else
                 {
-                    SpaceEngineersExe = Path.GetFullPath(Path.Combine("steamapps", "common", "SpaceEngineersDedicatedServer", "DedicatedServer64", "SpaceEngineersDedicated.exe"));
-                    PluginLoaderDll = Path.GetFullPath(Path.Combine("steamapps", "common", "SpaceEngineersDedicatedServer", "DedicatedServer64", "PluginLoader.dll"));
+                    ExeDir = Path.GetFullPath(Path.Combine("steamapps", "common", "SpaceEngineersDedicatedServer", "DedicatedServer64"));
+                    SpaceEngineersExe = Path.GetFullPath(Path.Combine(ExeDir, "SpaceEngineersDedicated.exe"));
+                    PluginLoaderDll = Path.GetFullPath(Path.Combine(ExeDir, "PluginLoader.dll"));
                 }
                 if (!File.Exists(SpaceEngineersExe))
                     throw new Exception("Space Engineers is not installed!");
