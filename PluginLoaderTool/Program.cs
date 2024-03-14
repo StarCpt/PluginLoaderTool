@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
@@ -158,7 +159,8 @@ namespace avaness.PluginLoaderTool
                     IEnumerable<(GitHubPlugin Plugin, Task Task)> compilationTasks =
                         plugins.OfType<GitHubPlugin>().Select(plugin => (plugin, CompilePlugin(newArchive, plugin, cacheDir)));
 
-                    foreach ((GitHubPlugin plugin, Task task) in compilationTasks)
+                    // Calling .ToArray on the IEnumerable starts all of the tasks
+                    foreach ((GitHubPlugin plugin, Task task) in compilationTasks.ToArray())
                     {
                         try
                         {
@@ -190,6 +192,8 @@ namespace avaness.PluginLoaderTool
             return true;
         }
 
+        private static SemaphoreSlim _zipLock = new SemaphoreSlim(1, 1);
+
         private static async Task CompilePlugin(ZipArchive newArchive, GitHubPlugin plugin, string cacheDir)
         {
             if (String.IsNullOrEmpty(cacheDir))
@@ -207,6 +211,9 @@ namespace avaness.PluginLoaderTool
 
                 string manifestFilePath = Path.Combine(cacheDir, rootDir, ManifestFileName);
 
+                // Ensure only one thread is writing to the ZipArchive at a time
+                await _zipLock.WaitAsync();
+
                 ZipArchiveEntry dllFile = newArchive.CreateEntry(Path.Combine(rootDir, PluginFileName));
                 using (Stream s = dllFile.Open())
                 {
@@ -219,6 +226,8 @@ namespace avaness.PluginLoaderTool
                 {
                     current.CopyTo(s);
                 }
+
+                _zipLock.Release();
             }
         }
 

@@ -115,7 +115,7 @@ namespace avaness.PluginLoaderTool.Data
 
                 using (FileStream fs = File.Create(manifest.DllFile))
                 {
-                    data.CopyTo(fs);
+                    await data.CopyToAsync(fs);
                     data.Position = 0;
                 }
 
