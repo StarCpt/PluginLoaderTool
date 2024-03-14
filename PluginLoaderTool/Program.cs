@@ -16,7 +16,6 @@ namespace avaness.PluginLoaderTool
 {
     public class Program
     {
-        public static Options ParsedOptions { get; private set; }
         public static string ExeDir { get; private set; }
 
         private static HttpClientHandler handler = new HttpClientHandler()
@@ -28,10 +27,9 @@ namespace avaness.PluginLoaderTool
         private static string SpaceEngineersExe = null;
         private static string PluginLoaderDll = null;
 
-        private const string RepoZipUrl = "https://github.com/{0}/archive/{1}.zip";
         private const string WhitelistFileName = "whitelist.bin";
         private const string PluginFileName = "plugin.dll";
-        private const string CommitHashFileName = "commit.sha1";
+        private const string ManifestFileName = "manifest.xml";
 
         public class Options
         {
@@ -66,7 +64,7 @@ namespace avaness.PluginLoaderTool
             ParserResult<Options> result = Parser.Default.ParseArguments<Options>(args);
             if (result is Parsed<Options> parsedArgs) // Equivalent to ParserResult<T>.WithParsed<T>()
             {
-                Options o = ParsedOptions = parsedArgs.Value;
+                Options o = parsedArgs.Value;
 
                 if (o.SteamDir != null)
                 {
@@ -92,12 +90,19 @@ namespace avaness.PluginLoaderTool
                     return;
                 }
 
+                if (String.IsNullOrEmpty(o.CacheDir))
+                {
+                    o.CacheDir = Path.Combine(ExeDir, "Plugins");
+                }
+
+                o.CacheDir = Path.GetFullPath(o.CacheDir);
+
                 if (o.VerifyOnly)
                 {
                     foreach(PluginData plugin in plugins)
                     {
                         if (plugin is GitHubPlugin github)
-                            github.InitPaths();
+                            github.InitPaths(o.CacheDir);
                     }
                 }
                 else if (o.Output != null)
@@ -150,23 +155,22 @@ namespace avaness.PluginLoaderTool
             {
                 using (ZipArchive newArchive = new ZipArchive(mem, ZipArchiveMode.Create, true))
                 {
-                    foreach (PluginData plugin in plugins)
-                    {
-                        if (plugin is GitHubPlugin github)
-                        {
-                            try
-                            {
-                                github.InitPaths();
-                                await CompilePlugin(newArchive, github, cacheDir);
-                            }
-                            catch (Exception e)
-                            {
-                                Console.WriteLine("Failed to compile " + github + ": " + e);
-                                throw;
-                            }
+                    IEnumerable<(GitHubPlugin Plugin, Task Task)> compilationTasks =
+                        plugins.OfType<GitHubPlugin>().Select(plugin => (plugin, CompilePlugin(newArchive, plugin, cacheDir)));
 
-                            Console.WriteLine("Compiled " + plugin);
+                    foreach ((GitHubPlugin plugin, Task task) in compilationTasks)
+                    {
+                        try
+                        {
+                            await task;
                         }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("Failed to compile " + plugin + ": " + e);
+                            throw;
+                        }
+
+                        Console.WriteLine("Compiled " + plugin);
                     }
 
                     ZipArchiveEntry whitelistFile = newArchive.CreateEntry(WhitelistFileName);
@@ -188,66 +192,32 @@ namespace avaness.PluginLoaderTool
 
         private static async Task CompilePlugin(ZipArchive newArchive, GitHubPlugin plugin, string cacheDir)
         {
+            if (String.IsNullOrEmpty(cacheDir))
+            {
+                throw new ArgumentNullException(nameof(cacheDir));
+            }
+
+            plugin.InitPaths(cacheDir);
+
             string rootDir = Path.Combine("GitHub", plugin.UserName, plugin.CompiledAssemblyName);
-            string dllFileName = null;
-            string commitFileName = null;
-            if(cacheDir != null)
-            {
-                dllFileName = Path.Combine(cacheDir, rootDir, PluginFileName);
-                commitFileName = Path.Combine(cacheDir, rootDir, CommitHashFileName);
-            }
-            if (cacheDir == null || !File.Exists(dllFileName) || !File.Exists(commitFileName) || File.ReadAllText(commitFileName) != plugin.Commit)
-            {
-                Uri url = new Uri(string.Format(RepoZipUrl, plugin.Id, plugin.Commit), UriKind.Absolute);
-                byte[] assemblyData;
-                using (Stream archiveWeb = await webClient.GetStreamAsync(url))
-                using (MemoryStream archiveMem = new MemoryStream())
-                {
-                    await archiveWeb.CopyToAsync(archiveMem);
-                    archiveMem.Position = 0;
-                    assemblyData = plugin.CompileFromSource(archiveMem);
-                }
 
+            using (Stream assemblyData = await plugin.CompilePluginAsync())
+            {
+                // Do not asynchronously write to zip archives as only one entry can be open at a time.
+
+                string manifestFilePath = Path.Combine(cacheDir, rootDir, ManifestFileName);
 
                 ZipArchiveEntry dllFile = newArchive.CreateEntry(Path.Combine(rootDir, PluginFileName));
                 using (Stream s = dllFile.Open())
                 {
-                    await s.WriteAsync(assemblyData, 0, assemblyData.Length);
+                    assemblyData.CopyTo(s);
                 }
 
-                ZipArchiveEntry commitFile = newArchive.CreateEntry(Path.Combine(rootDir, CommitHashFileName));
-                using (StreamWriter s = new StreamWriter(commitFile.Open()))
+                ZipArchiveEntry manifestFile = newArchive.CreateEntry(Path.Combine(rootDir, ManifestFileName));
+                using (Stream s = manifestFile.Open())
+                using (FileStream current = File.OpenRead(manifestFilePath))
                 {
-                    await s.WriteAsync(plugin.Commit);
-                }
-
-                if(cacheDir != null)
-                {
-                    Directory.CreateDirectory(Path.Combine(cacheDir, rootDir));
-                    using (FileStream s = File.Create(dllFileName))
-                    {
-                        await s.WriteAsync(assemblyData, 0, assemblyData.Length);
-                    }
-                    using (StreamWriter s = File.CreateText(commitFileName))
-                    {
-                        await s.WriteAsync(plugin.Commit);
-                    }
-                }
-            }
-            else if (cacheDir != null)
-            {
-                ZipArchiveEntry dllFile = newArchive.CreateEntry(Path.Combine(rootDir, PluginFileName));
-                using (Stream s = dllFile.Open())
-                using (FileStream current = File.OpenRead(dllFileName))
-                {
-                    await current.CopyToAsync(s);
-                }
-
-                ZipArchiveEntry commitFile = newArchive.CreateEntry(Path.Combine(rootDir, CommitHashFileName));
-                using (Stream s = commitFile.Open())
-                using (FileStream current = File.OpenRead(commitFileName))
-                {
-                    await current.CopyToAsync(s);
+                    current.CopyTo(s);
                 }
             }
         }

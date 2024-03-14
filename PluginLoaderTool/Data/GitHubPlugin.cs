@@ -1,17 +1,13 @@
 ﻿using avaness.PluginLoaderTool.Network;
 using avaness.PluginLoaderTool.Compiler;
-using NuGet.Packaging;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Net.Http;
-using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using System.Xml.Serialization;
-using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace avaness.PluginLoaderTool.Data
 {
@@ -49,7 +45,7 @@ namespace avaness.PluginLoaderTool.Data
         public GitHubPlugin()
         { }
 
-        public void InitPaths()
+        public void InitPaths(string cacheDir)
         {
             string[] nameArgs = Id.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
             if (nameArgs.Length < 2)
@@ -67,7 +63,7 @@ namespace avaness.PluginLoaderTool.Data
             UserName = nameArgs[0];
             CompiledAssemblyName = nameArgs[1];
             assemblyNameSafe = MakeSafeString(nameArgs[1]);
-            manifest = CacheManifest.Load(nameArgs[0], nameArgs[1]);
+            manifest = CacheManifest.Load(Path.Combine(cacheDir, "GitHub", nameArgs[0], nameArgs[1]));
         }
 
         private void CleanPaths(string[] paths)
@@ -102,28 +98,61 @@ namespace avaness.PluginLoaderTool.Data
             return sb.ToString();
         }
 
+        public async Task<Stream> CompilePluginAsync()
+        {
+            Stream data;
 
-        public byte[] CompileFromSource(Stream archive)
+            // TODO?: Add game version check
+            int gameVersion = 0;
+            string selectedCommit = Commit;
+            if (!manifest.IsCacheValid(selectedCommit, gameVersion, !String.IsNullOrWhiteSpace(AssetFolder), NuGetReferences != null))
+            {
+                manifest.GameVersion = gameVersion;
+                manifest.Commit = selectedCommit;
+                manifest.ClearAssets();
+
+                data = new MemoryStream(await CompileFromSourceAsync(selectedCommit));
+
+                using (FileStream fs = File.Create(manifest.DllFile))
+                {
+                    data.CopyTo(fs);
+                    data.Position = 0;
+                }
+
+                manifest.DeleteUnknownFiles();
+                manifest.Save();
+            }
+            else
+            {
+                manifest.DeleteUnknownFiles();
+                data = File.OpenRead(manifest.DllFile);
+            }
+
+            return data;
+        }
+
+        public async Task<byte[]> CompileFromSourceAsync(string commit)
         {
             RoslynCompiler compiler = new RoslynCompiler();
-            using (ZipArchive zip = new ZipArchive(archive))
+            using (Stream s = await GitHub.DownloadRepoAsync(Id, commit))
+            using (ZipArchive zip = new ZipArchive(s))
             {
                 for (int i = 0; i < zip.Entries.Count; i++)
                 {
                     ZipArchiveEntry entry = zip.Entries[i];
-                    CompileFromSource(compiler, entry);
+                    await CompileFromSourceAsync(compiler, entry);
                 }
             }
             if (NuGetReferences?.PackageIds != null)
             {
                 if (nuget == null)
                     nuget = new NuGetClient();
-                InstallPackages(nuget.DownloadPackages(NuGetReferences.PackageIds), compiler);
+                InstallPackages(await nuget.DownloadPackagesAsync(NuGetReferences.PackageIds), compiler);
             }
             return compiler.Compile(assemblyNameSafe, out _);
         }
 
-        private void CompileFromSource(RoslynCompiler compiler, ZipArchiveEntry entry)
+        private async Task CompileFromSourceAsync(RoslynCompiler compiler, ZipArchiveEntry entry)
         {
             string path = RemoveRoot(entry.FullName);
             if (NuGetReferences != null && path == NuGetReferences.PackagesConfigNormalized)
@@ -132,7 +161,7 @@ namespace avaness.PluginLoaderTool.Data
                 NuGetPackage[] packages;
                 using (Stream entryStream = entry.Open())
                 {
-                    packages = nuget.DownloadFromConfig(entryStream);
+                    packages = await nuget.DownloadFromConfigAsync(entryStream);
                 }
                 InstallPackages(packages, compiler);
             }

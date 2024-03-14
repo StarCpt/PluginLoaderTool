@@ -74,9 +74,8 @@ namespace avaness.PluginLoaderTool.Data
                 }
             }
 
-            public static CacheManifest Load(string userName, string repoName)
+            public static CacheManifest Load(string cacheDir)
             {
-                string cacheDir =  Path.Combine(Program.ParsedOptions.CacheDir ?? Path.Combine(Program.ExeDir, "Plugins"), "GitHub", userName, repoName);
                 Directory.CreateDirectory(cacheDir);
 
                 CacheManifest manifest;
