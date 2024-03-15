@@ -3,7 +3,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,8 +11,8 @@ namespace avaness.PluginLoaderTool.Compiler
 {
     public class RoslynCompiler
     {
-        private readonly ConcurrentBag<Source> source = new ConcurrentBag<Source>();
-        private readonly ConcurrentBag<MetadataReference> customReferences = new ConcurrentBag<MetadataReference>();
+        private readonly List<Source> source = new List<Source>();
+        private readonly List<MetadataReference> customReferences = new List<MetadataReference>();
         private bool debugBuild;
 
         public RoslynCompiler(bool debugBuild = false)
@@ -35,11 +34,9 @@ namespace avaness.PluginLoaderTool.Compiler
         {
             symbols = null;
 
-            var sourceCopy = source.ToArray();
-
             CSharpCompilation compilation = CSharpCompilation.Create(
                 assemblyName,
-                syntaxTrees: sourceCopy.Select(x => x.Tree),
+                syntaxTrees: source.Select(x => x.Tree),
                 references: RoslynReferences.EnumerateAllReferences().Concat(customReferences.ToArray()),
                 options: new CSharpCompilationOptions(
                     OutputKind.DynamicallyLinkedLibrary,
@@ -54,7 +51,7 @@ namespace avaness.PluginLoaderTool.Compiler
                 if (debugBuild)
                 {
                     result = compilation.Emit(ms, pdb,
-                        embeddedTexts: sourceCopy.Select(x => x.Text),
+                        embeddedTexts: source.Select(x => x.Text),
                         options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb, pdbFilePath: Path.ChangeExtension(assemblyName, "pdb")));
                 }
                 else
@@ -72,7 +69,7 @@ namespace avaness.PluginLoaderTool.Compiler
                     foreach (Diagnostic diagnostic in failures)
                     {
                         Location location = diagnostic.Location;
-                        Source source = sourceCopy.FirstOrDefault(x => x.Tree == location.SourceTree);
+                        Source source = this.source.FirstOrDefault(x => x.Tree == location.SourceTree);
                         Console.WriteLine($"{diagnostic.Id}: {diagnostic.GetMessage()} in file:\n{source?.Name ?? "null"} ({location.GetLineSpan().StartLinePosition})");
                     }
                     throw new Exception("Compilation failed!");
