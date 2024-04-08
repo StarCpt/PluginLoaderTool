@@ -37,7 +37,7 @@ namespace avaness.PluginLoaderTool.Compiler
             CSharpCompilation compilation = CSharpCompilation.Create(
                 assemblyName,
                 syntaxTrees: source.Select(x => x.Tree),
-                references: RoslynReferences.EnumerateAllReferences().Concat(customReferences),
+                references: RoslynReferences.EnumerateAllReferences().Concat(customReferences.ToArray()),
                 options: new CSharpCompilationOptions(
                     OutputKind.DynamicallyLinkedLibrary,
                     optimizationLevel: debugBuild ? OptimizationLevel.Debug : OptimizationLevel.Release,

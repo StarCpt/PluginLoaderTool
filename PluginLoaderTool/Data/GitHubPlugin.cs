@@ -105,7 +105,7 @@ namespace avaness.PluginLoaderTool.Data
             // TODO?: Add game version check
             int gameVersion = 0;
             string selectedCommit = Commit;
-            if (!manifest.IsCacheValid(selectedCommit, gameVersion, !String.IsNullOrWhiteSpace(AssetFolder), NuGetReferences != null && NuGetReferences.HasPackages))
+            if (!manifest.IsCacheValid(selectedCommit, gameVersion, !String.IsNullOrWhiteSpace(AssetFolder), NuGetReferences != null))
             {
                 manifest.GameVersion = gameVersion;
                 manifest.Commit = selectedCommit;
