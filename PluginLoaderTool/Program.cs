@@ -114,7 +114,6 @@ namespace avaness.PluginLoaderTool
                 }
 
                 Console.WriteLine("Done!");
-                Console.ReadKey();
             }
         }
 
