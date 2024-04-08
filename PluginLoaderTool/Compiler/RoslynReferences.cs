@@ -11,7 +11,7 @@ namespace avaness.PluginLoaderTool.Compiler
     public static class RoslynReferences
     {
         private static Dictionary<string, MetadataReference> allReferences = new Dictionary<string, MetadataReference>();
-        private static readonly HashSet<string> referenceBlacklist = new HashSet<string>(new[] { "System.ValueTuple", "protobuf-net", "protobuf-net.Core" });
+        private static readonly HashSet<string> referenceBlacklist = new HashSet<string>(new[] { "System.ValueTuple" });
 
         public static void GenerateAssemblyList()
         {
@@ -38,6 +38,7 @@ namespace avaness.PluginLoaderTool.Compiler
                     AssemblyName name = a.GetName();
                     if (name.Name == harmonyInfo.Name && name.Version != harmonyInfo.Version)
                     {
+                        Console.WriteLine($"Multiple Harmony assemblies are loaded. Plugin Loader is using {harmonyInfo} but found {name}");
                         continue;
                     }
 
@@ -59,6 +60,7 @@ namespace avaness.PluginLoaderTool.Compiler
                         // Prevent other Harmony versions from being loaded
                         if (name.Name == harmonyInfo.Name && name.Version != harmonyInfo.Version)
                         {
+                            Console.WriteLine($"Multiple Harmony assemblies are loaded. Plugin Loader is using {harmonyInfo} but found {name}");
                             continue;
                         }
 

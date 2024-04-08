@@ -96,7 +96,7 @@ namespace avaness.PluginLoaderTool.Network
             List<NuGetPackage> result = new List<NuGetPackage>();
             using (SourceCacheContext cacheContext = new SourceCacheContext())
             {
-                IEnumerable<PackageIdentity> downloadPackages = packages/*.Where(x => !CheckAlreadyInstalled(x.Id))*/;
+                IEnumerable<PackageIdentity> downloadPackages = packages;
                 if (getDependencies && downloadPackages.Any())
                     downloadPackages = await ResolveDependencies(downloadPackages, cacheContext);
 
@@ -157,7 +157,7 @@ namespace avaness.PluginLoaderTool.Network
 
         public async Task<NuGetPackage> DownloadPackage(SourceCacheContext cacheContext, PackageIdentity package, NuGetFramework framework = null)
         {
-            //if (CheckAlreadyInstalled(package.Id))
+            //if (CheckAlreadyInstalled(package.Id)) // Installed doesn't mean it'll be added as a reference during compilation
             //    return null;
 
             if (framework == null || framework.IsAny || framework.IsAgnostic || framework.IsUnsupported)
