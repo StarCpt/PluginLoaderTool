@@ -11,7 +11,7 @@ namespace avaness.PluginLoaderTool.Compiler
     public static class RoslynReferences
     {
         private static Dictionary<string, MetadataReference> allReferences = new Dictionary<string, MetadataReference>();
-        private static readonly HashSet<string> referenceBlacklist = new HashSet<string>(new[] { "System.ValueTuple" });
+        private static readonly HashSet<string> referenceBlacklist = new HashSet<string>(new[] { "System.ValueTuple", "protobuf-net", "protobuf-net.Core" });
 
         public static void GenerateAssemblyList()
         {
